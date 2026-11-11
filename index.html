@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FBF6EC">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Check Matos">
+<title>Check Matos</title>
+<style>
+  :root{
+    --bg:#FBF6EC; --ink:#17171A; --muted:#8C867A; --card:#FFFFFF; --line:#EFE7D6; --soft:#F3EDDF;
+    --pink:#FFB8DE; --pink-strong:#FF8CCB; --yellow:#FFE27A; --green:#9BE5A0; --green-strong:#5FD06F;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{background:var(--bg);}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:ui-rounded,"SF Pro Rounded","Nunito",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 130px);
+  }
+  .wrap{max-width:460px; margin:0 auto;}
+  button{font-family:inherit; color:inherit; border:none; background:none; padding:0; cursor:pointer;}
+  input{font-family:inherit; color:inherit;}
+
+  .top{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
+  .brand{font-size:12px; font-weight:800; letter-spacing:1.4px; text-transform:uppercase; color:var(--muted);}
+  .round-btn{width:42px; height:42px; border-radius:50%; background:var(--card); border:1.5px dashed #D9D0BC; display:flex; align-items:center; justify-content:center;}
+  .round-btn svg{width:20px; height:20px;}
+
+  #eventName{
+    width:100%; border:none; background:transparent; outline:none; padding:0;
+    font-size:34px; font-weight:800; letter-spacing:-.8px; line-height:1.1;
+  }
+  #eventName::placeholder{color:#CFC7B4;}
+  .date-chip{
+    display:inline-flex; align-items:center; gap:6px; margin-top:8px; background:var(--card);
+    border-radius:999px; padding:7px 12px; font-size:13px; font-weight:700;
+  }
+  .date-chip input{border:none; background:transparent; outline:none; font-size:13px; font-weight:700; padding:0;}
+
+  .hero{position:relative; width:250px; height:250px; margin:18px auto 6px;}
+  .hero svg{width:100%; height:100%; transform:rotate(-90deg);}
+  .hero-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none;}
+  .hero-num{font-size:64px; font-weight:800; letter-spacing:-3px; line-height:1;}
+  .hero-num small{font-size:26px; letter-spacing:-1px; margin-left:2px;}
+  .hero-sub{font-size:13px; font-weight:700; color:var(--muted); margin-top:6px;}
+  .seg{transition:stroke-dasharray .45s cubic-bezier(.2,.8,.2,1);}
+
+  .assistant{border-radius:26px; padding:16px 18px; margin:14px 0 6px; position:relative; overflow:hidden;}
+  .assistant.warn{background:var(--pink);} .assistant.ok{background:var(--green);} .assistant.info{background:var(--yellow);}
+  .assistant .tag{font-size:11px; font-weight:800; opacity:.6; letter-spacing:.3px;}
+  .assistant .msg{font-size:17px; font-weight:800; letter-spacing:-.3px; margin-top:4px; line-height:1.25;}
+  .assistant .pills{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .assistant .pill{background:var(--ink); color:#fff; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700;}
+  .assistant .blob{position:absolute; right:-18px; bottom:-26px; width:110px; height:110px; border-radius:50%; background:rgba(255,255,255,.35);}
+
+  .section-title{display:flex; align-items:baseline; justify-content:space-between; margin:26px 4px 12px;}
+  .section-title h2{font-size:20px; font-weight:800; letter-spacing:-.4px; margin:0;}
+  .section-title span{font-size:12px; font-weight:700; color:var(--muted);}
+
+  .suggest{display:flex; gap:8px; overflow-x:auto; margin:0 -18px; padding:2px 18px 6px; scrollbar-width:none;}
+  .suggest::-webkit-scrollbar{display:none;}
+  .chip{flex:none; border-radius:999px; padding:10px 14px; font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px; white-space:nowrap;}
+  .chip b{display:inline-flex; width:18px; height:18px; border-radius:50%; background:var(--ink); color:#fff; align-items:center; justify-content:center; font-size:13px; line-height:1;}
+
+  .cat-head{display:flex; align-items:center; gap:8px; margin:20px 4px 10px;}
+  .cat-dot{width:10px; height:10px; border-radius:50%;}
+  .cat-name{font-size:13px; font-weight:800; letter-spacing:.2px;}
+  .cat-count{margin-left:auto; font-size:12px; font-weight:800; color:var(--muted);}
+
+  .item{
+    display:flex; align-items:center; gap:12px; background:var(--card); border-radius:22px; padding:10px 10px 10px 10px;
+    margin-bottom:10px; box-shadow:0 1px 0 rgba(23,23,26,.04), 0 8px 24px -18px rgba(23,23,26,.25);
+    transition:transform .12s ease, opacity .2s ease;
+  }
+  .item:active{transform:scale(.985);}
+  .item.done{opacity:.55;}
+  .tile{width:48px; height:48px; flex:none; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:24px;}
+  .item-main{flex:1; min-width:0;}
+  .item-label{font-size:16px; font-weight:800; letter-spacing:-.2px; overflow-wrap:anywhere;}
+  .item.done .item-label{text-decoration:line-through;}
+  .item-sub{font-size:11.5px; font-weight:700; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:6px;}
+  .ess{background:var(--pink); color:var(--ink); border-radius:999px; padding:2px 8px; font-size:10.5px; font-weight:800;}
+  .more{width:32px; height:44px; flex:none; display:flex; align-items:center; justify-content:center; color:#B9B19F;}
+  .check{
+    width:46px; height:46px; flex:none; border-radius:16px; background:var(--soft);
+    display:flex; align-items:center; justify-content:center; transition:background .15s ease;
+  }
+  .check svg{width:22px; height:22px; stroke:#CFC7B4; transition:stroke .15s ease;}
+  .check.on{background:var(--green-strong); animation:pop .28s cubic-bezier(.2,1.6,.4,1);}
+  .check.on svg{stroke:var(--ink);}
+  @keyframes pop{0%{transform:scale(.8);}100%{transform:scale(1);}}
+
+  .empty{text-align:center; padding:26px 20px; color:var(--muted); font-size:14px; font-weight:700; line-height:1.5;}
+  .empty .big{font-size:44px; display:block; margin-bottom:8px;}
+
+  .nav{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom) + 16px);
+    width:min(calc(100% - 36px), 400px); height:68px; background:var(--ink); border-radius:26px;
+    display:flex; align-items:center; justify-content:space-between; padding:0 10px; z-index:20;
+    box-shadow:0 18px 40px -16px rgba(23,23,26,.55);
+  }
+  .tab{flex:1; height:48px; border-radius:18px; color:#8E8E96; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:7px; transition:background .2s, color .2s;}
+  .tab svg{width:19px; height:19px;}
+  .tab.active{background:#fff; color:var(--ink);}
+  .fab{
+    width:62px; height:62px; flex:none; margin:0 10px; border-radius:50%; background:var(--pink-strong); color:var(--ink);
+    transform:translateY(-16px); border:5px solid var(--bg); display:flex; align-items:center; justify-content:center;
+  }
+  .fab svg{width:26px; height:26px;}
+  .fab:active{transform:translateY(-16px) scale(.94);}
+
+  .overlay{position:fixed; inset:0; background:rgba(23,23,26,.35); opacity:0; pointer-events:none; transition:opacity .25s; z-index:30;}
+  .overlay.show{opacity:1; pointer-events:auto;}
+  .sheet{
+    position:fixed; left:0; right:0; bottom:0; z-index:40; background:var(--bg); border-radius:32px 32px 0 0;
+    padding:10px 20px calc(env(safe-area-inset-bottom) + 22px); transform:translateY(105%);
+    transition:transform .32s cubic-bezier(.2,.9,.2,1); max-width:500px; margin:0 auto; max-height:88vh; overflow-y:auto;
+  }
+  .sheet.show{transform:translateY(0);}
+  .grab{width:44px; height:5px; border-radius:3px; background:#DDD4C0; margin:0 auto 16px;}
+  .sheet h3{font-size:24px; font-weight:800; letter-spacing:-.5px; margin:0 0 4px; overflow-wrap:anywhere;}
+  .sheet p.sub{font-size:13px; font-weight:700; color:var(--muted); margin:0 0 16px; line-height:1.45;}
+  .field{display:flex; gap:8px;}
+  .field input{flex:1; min-width:0; background:var(--card); border:none; outline:none; border-radius:18px; padding:16px; font-size:16px; font-weight:700;}
+  .btn{height:54px; border-radius:18px; font-size:15px; font-weight:800; padding:0 20px; display:flex; align-items:center; justify-content:center; gap:8px;}
+  .btn.dark{background:var(--ink); color:#fff;}
+  .btn.light{background:var(--card);}
+  .btn.danger{background:#FFD3CF;}
+  .btn.full{width:100%; margin-top:10px;}
+  .mic{
+    width:100%; margin-top:12px; height:92px; border-radius:26px; background:var(--pink); display:flex; align-items:center; gap:14px; padding:0 20px;
+    font-size:16px; font-weight:800; text-align:left;
+  }
+  .mic .orb{width:56px; height:56px; border-radius:50%; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center; flex:none;}
+  .mic .orb svg{width:24px; height:24px;}
+  .mic small{display:block; font-size:12px; font-weight:700; opacity:.6; margin-top:2px;}
+  .mic.listening{background:var(--yellow);}
+  .mic.listening .orb{animation:pulse 1s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(23,23,26,.35);}100%{box-shadow:0 0 0 18px rgba(23,23,26,0);}}
+
+  .preview{display:flex; flex-wrap:wrap; gap:6px; margin-top:12px;}
+  .preview .chip{padding:7px 12px; font-size:12.5px;}
+  .mic-note{font-size:12.5px; font-weight:700; color:var(--muted); margin:12px 2px 0; line-height:1.45;}
+  .cat-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;}
+  .cat-opt{border-radius:16px; padding:12px; font-size:13px; font-weight:800; display:flex; align-items:center; gap:8px; text-align:left; border:2.5px solid transparent;}
+  .cat-opt.sel{border-color:var(--ink);}
+  .label-sm{font-size:12px; font-weight:800; color:var(--muted); margin:18px 2px 0; letter-spacing:.3px; text-transform:uppercase;}
+  .row-toggle{display:flex; align-items:center; justify-content:space-between; background:var(--card); border-radius:18px; padding:16px; font-size:15px; font-weight:800; width:100%; margin-top:10px;}
+  .switch{width:46px; height:28px; border-radius:999px; background:#DDD4C0; position:relative; transition:background .2s; flex:none;}
+  .switch::after{content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:transform .2s;}
+  .switch.on{background:var(--ink);}
+  .switch.on::after{transform:translateX(18px);}
+
+  .toast{
+    position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 104px); transform:translate(-50%, 20px); opacity:0;
+    background:var(--ink); color:#fff; border-radius:999px; padding:11px 18px; font-size:13px; font-weight:800; z-index:60;
+    transition:opacity .2s, transform .2s; pointer-events:none; white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translate(-50%, 0);}
+
+  .confetti{position:fixed; top:230px; left:50%; width:10px; height:10px; border-radius:3px; z-index:50; pointer-events:none; animation:fly 1.1s cubic-bezier(.1,.7,.3,1) forwards;}
+  @keyframes fly{to{transform:translate(var(--x), var(--y)) rotate(var(--r)); opacity:0;}}
+
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">Check Matos</div>
+    <button class="round-btn" id="menuBtn" aria-label="Options">
+      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+    </button>
+  </div>
+
+  <input type="text" id="eventName" placeholder="Ton tournage" autocomplete="off">
+  <label class="date-chip">📅 <input type="date" id="eventDate"></label>
+
+  <div class="hero">
+    <svg viewBox="0 0 220 220" id="ring"></svg>
+    <div class="hero-center">
+      <div class="hero-num"><span id="pctNum">0</span><small>%</small></div>
+      <div class="hero-sub" id="heroSub"></div>
+    </div>
+  </div>
+
+  <div id="assistantZone"></div>
+  <div id="suggestZone"></div>
+  <div id="listZone"></div>
+</div>
+
+<nav class="nav">
+  <button class="tab" data-mode="avant">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l1.2 11a1.8 1.8 0 0 1-1.8 2H6.6a1.8 1.8 0 0 1-1.8-2L6 8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>
+    Départ
+  </button>
+  <button class="fab" id="fab" aria-label="Ajouter">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+  <button class="tab" data-mode="apres">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>
+    Retour
+  </button>
+</nav>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="sheet" id="addSheet">
+  <div class="grab"></div>
+  <h3>Ajoute ton matos</h3>
+  <p class="sub">Dicte ou tape plusieurs objets d'un coup. Tu vérifies la liste, puis tu ajoutes.</p>
+  <div class="field">
+    <input type="text" id="itemInput" placeholder="Caméra, micro HF, trépied…" autocomplete="off" enterkeyhint="done">
+    <button class="btn dark" id="addBtn">Ajouter</button>
+  </div>
+  <div class="preview" id="preview"></div>
+  <button class="mic" id="micBtn">
+    <span class="orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></span>
+    <span><span id="micTitle">Dicter ma liste</span><small id="micSub">Énumère ton matos, je sépare les objets</small></span>
+  </button>
+  <div class="mic-note" id="micNote" hidden></div>
+</div>
+
+<div class="sheet" id="itemSheet">
+  <div class="grab"></div>
+  <h3 id="itemTitle"></h3>
+  <button class="row-toggle" id="essToggle">Indispensable<span class="switch" id="essSwitch"></span></button>
+  <div class="label-sm">Catégorie</div>
+  <div class="cat-grid" id="catGrid"></div>
+  <button class="btn danger full" id="deleteBtn">Supprimer</button>
+</div>
+
+<div class="sheet" id="menuSheet">
+  <div class="grab"></div>
+  <h3>Options</h3>
+  <button class="row-toggle" id="hideToggle">Cacher ce qui est coché<span class="switch" id="hideSwitch"></span></button>
+  <button class="btn light full" id="resetEventBtn">Nouveau tournage (garde ma liste)</button>
+  <button class="btn danger full" id="clearAllBtn">Tout effacer</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'checkmatos-v1';
+
+const CATS = {
+  'Caméras': {emoji:'🎥', color:'#FFE27A'},
+  'Objectifs': {emoji:'📸', color:'#BFCBFF'},
+  'Son': {emoji:'🎙️', color:'#FFB8DE'},
+  'Lumière': {emoji:'💡', color:'#FFCB94'},
+  'Batteries & Stockage': {emoji:'🔋', color:'#A9E8A6'},
+  'Stabilisation & Supports': {emoji:'🔩', color:'#A5E3EA'},
+  'Accessoires': {emoji:'🎒', color:'#D8C7FF'},
+  'Administratif': {emoji:'📄', color:'#E6DCC6'},
+};
+const CATEGORY_ORDER = Object.keys(CATS);
+
+const KEYWORDS = [
+  ['Administratif', ['contrat','carte de visite','planning','facture','devis','acompte']],
+  ['Batteries & Stockage', ['batterie','pile','carte','cfexpress','chargeur','powerbank','disque dur','ssd','lecteur']],
+  ['Son', ['zoom h','enregistreur','micro','audio','casque','perche','bonnette','cravate','lavalier','xlr']],
+  ['Stabilisation & Supports', ['trepied','gimbal','stabilisateur','slider','monopode','rotule','plaque','ronin']],
+  ['Lumière', ['lumiere','led','lampe','panneau','softbox','diffuseur','reflecteur','flash','torche']],
+  ['Objectifs', ['objectif','lentille','zoom','grand angle','macro','focale','filtre','mm']],
+  ['Caméras', ['camera','boitier','reflex','hybride','gopro','sony','canon','nikon','panasonic','lumix','fuji','bmpcc','fx3','fx30','a7','drone','cage']],
+];
+
+const SUGGESTIONS = [
+  {label:'Batteries de secours', category:'Batteries & Stockage', key:'batterie'},
+  {label:'Cartes mémoire en plus', category:'Batteries & Stockage', key:'carte'},
+  {label:'Chargeur de batteries', category:'Batteries & Stockage', key:'chargeur'},
+  {label:'Micro-cravate HF', category:'Son', key:'cravate'},
+  {label:'Piles pour micros', category:'Batteries & Stockage', key:'pile'},
+  {label:'Casque audio', category:'Son', key:'casque'},
+  {label:'Enregistreur audio', category:'Son', key:'enregistreur'},
+  {label:'Trépied', category:'Stabilisation & Supports', key:'trepied'},
+  {label:'Plaque rapide', category:'Stabilisation & Supports', key:'plaque'},
+  {label:'Caméra de secours', category:'Caméras', key:'secours'},
+  {label:'Lampe LED', category:'Lumière', key:'led'},
+  {label:'Filtres ND', category:'Objectifs', key:'nd'},
+  {label:'Chiffon objectif', category:'Objectifs', key:'chiffon'},
+  {label:'Powerbank', category:'Batteries & Stockage', key:'powerbank'},
+  {label:'Disque dur de sauvegarde', category:'Batteries & Stockage', key:'disque'},
+  {label:'Gaffer', category:'Accessoires', key:'gaffer'},
+  {label:'Multiprise + rallonge', category:'Accessoires', key:'multiprise'},
+  {label:'Housse pluie', category:'Accessoires', key:'pluie'},
+  {label:'Planning de la journée', category:'Administratif', key:'planning'},
+  {label:'Contrat signé', category:'Administratif', key:'contrat'},
+  {label:'Numéro du témoin', category:'Administratif', key:'temoin'},
+];
+
+const $ = id => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; };
+const normalize = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+
+function guessCategory(label){
+  const n = normalize(label);
+  for(const [cat, kws] of KEYWORDS){
+    if(kws.some(kw => n.includes(kw))) return cat;
+  }
+  return 'Accessoires';
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {eventName:'', eventDate:'', mode:'avant', hideDone:false, items:[]};
+}
+let state = load();
+function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){} }
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+function cleanLabel(s){
+  s = s.trim().replace(/^(un |une |des |du |mon |ma |mes |le |la |les |l')/i, '').trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
+const parseItems = rawText => rawText.split(/,|;|\n| et | puis /i).map(cleanLabel).filter(Boolean);
+
+const SEP_WORDS = new Set(['virgule','et','puis','ensuite','plus','aussi','point']);
+const ARTICLES = new Set(['un','une','des','du','mon','ma','mes','le','la','les']);
+const NUM_WORDS = {deux:2, trois:3, quatre:4, cinq:5, six:6, sept:7, huit:8, neuf:9, dix:10};
+const GLUE = new Set(['de','d','a','pour','sans','avec','en','sur']);
+const HEADS = new Set(['camera','boitier','objectif','micro','trepied','batterie','carte','chargeur','lampe','gimbal','casque','enregistreur','filtre','drone','stabilisateur','perche','disque','powerbank','gaffer','multiprise','rallonge','sac','panneau','reflecteur','monopode','slider','housse','contrat','planning','cable','moniteur','ecran','flash','torche','gopro','bonnette','pile','ssd','lecteur','cage','plaque','rotule','softbox','diffuseur','ordinateur','parapluie','scotch','chiffon','valise','sangle','telephone','clap','adaptateur','bague']);
+const COMPOUND_FIRST = new Set(['sac','cage','batterie','chargeur','plaque','housse','cable','lampe','pied','support','sangle','valise','filtre','bouchon','adaptateur','bague','micro','ecran','moniteur','chiffon','lecteur','carte']);
+const DEVICES = new Set(['camera','objectif','micro','trepied','gimbal','drone','lampe','gopro','ordinateur','telephone']);
+const stem = w => { const n = normalize(w).replace(/[^a-z0-9]/g, ''); return n.length > 3 ? n.replace(/[sx]$/, '') : n; };
+
+function segmentDictation(text){
+  const tokens = text.replace(/[.,;!?]/g, ' virgule ').split(/\s+/).filter(Boolean);
+  const segs = [];
+  let cur = [];
+  const flush = () => { if(cur.length) segs.push(cur.join(' ')); cur = []; };
+  tokens.forEach((raw, i) => {
+    let tok = raw;
+    const apo = tok.match(/^([ld])['’](.+)$/i);
+    if(apo){ if(apo[1].toLowerCase() === 'l') flush(); tok = apo[2]; }
+    const low = normalize(tok), st = stem(tok);
+    const prev = cur.length ? stem(cur[cur.length - 1]) : null;
+    const next = tokens[i + 1] ? stem(tokens[i + 1]) : null;
+    if(SEP_WORDS.has(low)){ flush(); return; }
+    if(ARTICLES.has(low) && prev !== 'de'){ flush(); return; }
+    if(NUM_WORDS[low] && HEADS.has(next)){ flush(); cur.push(String(NUM_WORDS[low])); return; }
+    if(/^\d+$/.test(low) && HEADS.has(next)){ flush(); cur.push(tok); return; }
+    if(HEADS.has(st) && prev && !GLUE.has(prev) && !/^\d+$/.test(prev)){
+      const single = cur.filter(w => !/^\d+$/.test(w)).length === 1;
+      const compound = !single ? false : (COMPOUND_FIRST.has(prev) && DEVICES.has(st)) || (prev === 'lecteur' && st === 'carte') || (prev === 'chargeur' && (st === 'batterie' || st === 'pile'));
+      if(!compound) flush();
+    }
+    cur.push(tok);
+  });
+  flush();
+  return segs;
+}
+
+function renderPreview(){
+  const zone = $('preview');
+  zone.innerHTML = '';
+  const parts = parseItems($('itemInput').value);
+  parts.forEach(label => {
+    const cat = guessCategory(label);
+    const chip = el('span', 'chip', `${CATS[cat].emoji} ${label}`);
+    chip.style.background = CATS[cat].color;
+    zone.appendChild(chip);
+  });
+  $('addBtn').textContent = parts.length > 1 ? `Ajouter (${parts.length})` : 'Ajouter';
+}
+
+function addItems(rawText){
+  const parts = parseItems(rawText);
+  parts.forEach(label => {
+    state.items.push({id:uid(), label, category:guessCategory(label), essential:false, packed:false, retrieved:false});
+  });
+  save(); render();
+  return parts.length;
+}
+
+const isChecked = item => state.mode === 'avant' ? item.packed : item.retrieved;
+const baseList = () => state.mode === 'apres' ? state.items.filter(i => i.packed) : state.items;
+
+function toggleItem(item){
+  if(state.mode === 'avant'){
+    item.packed = !item.packed;
+    if(!item.packed) item.retrieved = false;
+  } else {
+    item.retrieved = !item.retrieved;
+  }
+  if(navigator.vibrate) navigator.vibrate(8);
+  save(); render();
+}
+
+let toastTimer;
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function confetti(){
+  const colors = CATEGORY_ORDER.map(c => CATS[c].color).concat(['#FF8CCB','#5FD06F']);
+  for(let i = 0; i < 34; i++){
+    const c = el('div', 'confetti');
+    const angle = Math.random() * Math.PI * 2, dist = 90 + Math.random() * 170;
+    c.style.background = colors[i % colors.length];
+    c.style.setProperty('--x', Math.cos(angle) * dist + 'px');
+    c.style.setProperty('--y', Math.sin(angle) * dist + 'px');
+    c.style.setProperty('--r', (Math.random() * 720 - 360) + 'deg');
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 1200);
+  }
+}
+
+function renderRing(list){
+  const svg = $('ring');
+  svg.innerHTML = '';
+  const NS = 'http://www.w3.org/2000/svg', R = 92, C = 2 * Math.PI * R, SW = 20;
+  const arc = (color, len, start, opacity) => {
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', 110); c.setAttribute('cy', 110); c.setAttribute('r', R);
+    c.setAttribute('fill', 'none'); c.setAttribute('stroke', color); c.setAttribute('stroke-width', SW);
+    c.setAttribute('stroke-linecap', 'round'); c.setAttribute('opacity', opacity);
+    c.setAttribute('stroke-dasharray', `${Math.max(len, 0.01)} ${C}`);
+    c.setAttribute('stroke-dashoffset', -start);
+    c.setAttribute('class', 'seg');
+    svg.appendChild(c);
+  };
+  const groups = CATEGORY_ORDER.map(cat => ({cat, items:list.filter(i => i.category === cat)})).filter(g => g.items.length);
+  if(!groups.length){ arc('#EDE5D3', C, 0, 1); return; }
+  const gap = groups.length > 1 ? SW + 8 : 0;
+  const usable = C - gap * groups.length;
+  let pos = gap / 2;
+  groups.forEach(g => {
+    const len = usable * g.items.length / list.length;
+    const done = g.items.filter(isChecked).length / g.items.length;
+    const color = CATS[g.cat].color;
+    if(groups.length === 1){
+      arc(color, C, 0, .3);
+      if(done > 0) arc(color, done >= 1 ? C : C * done, 0, 1);
+    } else {
+      arc(color, len, pos, .3);
+      if(done > 0) arc(color, len * done, pos, 1);
+    }
+    pos += len + gap;
+  });
+}
+
+let lastPct = null;
+function render(){
+  if(document.activeElement !== $('eventName')) $('eventName').value = state.eventName;
+  $('eventDate').value = state.eventDate;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mode === state.mode));
+  $('hideSwitch').classList.toggle('on', state.hideDone);
+
+  const list = baseList();
+  const total = list.length, done = list.filter(isChecked).length;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  const avant = state.mode === 'avant';
+  $('pctNum').textContent = pct;
+  $('heroSub').textContent = total ? `${done} sur ${total} ${avant ? 'dans le sac' : 'récupérés'}` : (avant ? 'Rien à emporter' : 'Rien d\'emporté');
+  renderRing(list);
+  if(lastPct !== null && lastPct < 100 && pct === 100 && total) confetti();
+  lastPct = pct;
+
+  renderAssistant(list, total, done, pct, avant);
+  renderSuggestions(avant);
+  renderList(list, avant);
+}
+
+function renderAssistant(list, total, done, pct, avant){
+  const zone = $('assistantZone');
+  zone.innerHTML = '';
+  const card = el('div', 'assistant');
+  card.appendChild(el('div', 'tag', 'Assistant'));
+  const missing = list.filter(i => i.essential && !isChecked(i));
+  let msg;
+  if(!state.items.length){
+    card.classList.add('info');
+    msg = 'Appuie sur + et dicte ton matos. Je m\'occupe du rangement.';
+  } else if(!total){
+    card.classList.add('info');
+    msg = 'Coche d\'abord ce que tu emportes dans l\'onglet Départ.';
+  } else if(missing.length){
+    card.classList.add('warn');
+    msg = avant
+      ? `${missing.length} indispensable${missing.length > 1 ? 's' : ''} pas encore dans le sac`
+      : `${missing.length} indispensable${missing.length > 1 ? 's' : ''} encore sur place`;
+  } else if(pct === 100){
+    card.classList.add('ok');
+    msg = avant ? 'Tout est dans le sac. Bon tournage !' : 'Rien n\'est resté sur place. Tu peux rentrer.';
+  } else {
+    card.classList.add('info');
+    const left = total - done;
+    msg = avant ? `Encore ${left} à mettre dans le sac` : `Encore ${left} à récupérer avant de partir`;
+  }
+  card.appendChild(el('div', 'msg', msg));
+  if(missing.length){
+    const pills = el('div', 'pills');
+    missing.forEach(i => pills.appendChild(el('span', 'pill', i.label)));
+    card.appendChild(pills);
+  }
+  card.appendChild(el('div', 'blob'));
+  zone.appendChild(card);
+}
+
+function renderSuggestions(avant){
+  const zone = $('suggestZone');
+  zone.innerHTML = '';
+  if(!avant) return;
+  const existing = state.items.map(i => normalize(i.label));
+  const todo = SUGGESTIONS.filter(s => !existing.some(n => n.includes(s.key)));
+  if(!todo.length) return;
+  const head = el('div', 'section-title');
+  head.appendChild(el('h2', null, 'Souvent oublié'));
+  head.appendChild(el('span', null, 'Touche pour ajouter'));
+  zone.appendChild(head);
+  const row = el('div', 'suggest');
+  todo.forEach(s => {
+    const chip = el('button', 'chip');
+    chip.style.background = CATS[s.category].color;
+    chip.appendChild(el('b', null, '+'));
+    chip.appendChild(document.createTextNode(s.label));
+    chip.onclick = () => {
+      state.items.push({id:uid(), label:s.label, category:s.category, essential:false, packed:false, retrieved:false});
+      save(); render(); toast('Ajouté à ta liste');
+    };
+    row.appendChild(chip);
+  });
+  zone.appendChild(row);
+}
+
+function renderList(list, avant){
+  const zone = $('listZone');
+  zone.innerHTML = '';
+  if(!list.length){
+    if(state.items.length || !avant){
+      const e = el('div', 'empty');
+      e.appendChild(el('span', 'big', '🎒'));
+      e.appendChild(document.createTextNode('Rien de coché « dans le sac » pour l\'instant.'));
+      zone.appendChild(e);
+    }
+    return;
+  }
+  const head = el('div', 'section-title');
+  head.appendChild(el('h2', null, avant ? 'Mon matos' : 'À récupérer'));
+  head.appendChild(el('span', null, `${list.length} objet${list.length > 1 ? 's' : ''}`));
+  zone.appendChild(head);
+
+  let shown = 0;
+  CATEGORY_ORDER.forEach(cat => {
+    const all = list.filter(i => i.category === cat);
+    if(!all.length) return;
+    const visible = (state.hideDone ? all.filter(i => !isChecked(i)) : all)
+      .slice().sort((a, b) => (b.essential - a.essential) || (isChecked(a) - isChecked(b)));
+    if(!visible.length) return;
+    shown += visible.length;
+    const h = el('div', 'cat-head');
+    const dot = el('span', 'cat-dot'); dot.style.background = CATS[cat].color;
+    h.appendChild(dot);
+    h.appendChild(el('span', 'cat-name', cat));
+    h.appendChild(el('span', 'cat-count', `${all.filter(isChecked).length}/${all.length}`));
+    zone.appendChild(h);
+    visible.forEach(item => zone.appendChild(renderItem(item)));
+  });
+  if(!shown){
+    const e = el('div', 'empty');
+    e.appendChild(el('span', 'big', '✨'));
+    e.appendChild(document.createTextNode('Tout est coché.'));
+    zone.appendChild(e);
+  }
+}
+
+const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const MORE_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>';
+
+function renderItem(item){
+  const checked = isChecked(item);
+  const row = el('div', 'item' + (checked ? ' done' : ''));
+  row.onclick = () => toggleItem(item);
+
+  const tile = el('div', 'tile', CATS[item.category].emoji);
+  tile.style.background = CATS[item.category].color;
+  row.appendChild(tile);
+
+  const main = el('div', 'item-main');
+  main.appendChild(el('div', 'item-label', item.label));
+  if(item.essential){
+    const sub = el('div', 'item-sub');
+    sub.appendChild(el('span', 'ess', 'Indispensable'));
+    main.appendChild(sub);
+  }
+  row.appendChild(main);
+
+  const more = el('button', 'more');
+  more.innerHTML = MORE_SVG;
+  more.setAttribute('aria-label', 'Modifier');
+  more.onclick = e => { e.stopPropagation(); openItemSheet(item.id); };
+  row.appendChild(more);
+
+  const check = el('div', 'check' + (checked ? ' on' : ''));
+  check.innerHTML = CHECK_SVG;
+  row.appendChild(check);
+  return row;
+}
+
+let openSheetId = null;
+function openSheet(id){
+  closeSheet();
+  openSheetId = id;
+  $(id).classList.add('show');
+  $('overlay').classList.add('show');
+}
+function closeSheet(){
+  if(openSheetId) $(openSheetId).classList.remove('show');
+  $('overlay').classList.remove('show');
+  openSheetId = null;
+  stopDictation();
+}
+$('overlay').onclick = closeSheet;
+
+let currentItemId = null;
+function openItemSheet(id){
+  currentItemId = id;
+  renderItemSheet();
+  openSheet('itemSheet');
+}
+function renderItemSheet(){
+  const item = state.items.find(i => i.id === currentItemId);
+  if(!item) return;
+  $('itemTitle').textContent = item.label;
+  $('essSwitch').classList.toggle('on', item.essential);
+  const grid = $('catGrid');
+  grid.innerHTML = '';
+  CATEGORY_ORDER.forEach(cat => {
+    const b = el('button', 'cat-opt' + (item.category === cat ? ' sel' : ''), `${CATS[cat].emoji}  ${cat}`);
+    b.style.background = CATS[cat].color;
+    b.onclick = () => { item.category = cat; save(); render(); renderItemSheet(); };
+    grid.appendChild(b);
+  });
+}
+$('essToggle').onclick = () => {
+  const item = state.items.find(i => i.id === currentItemId);
+  if(!item) return;
+  item.essential = !item.essential;
+  save(); render(); renderItemSheet();
+};
+$('deleteBtn').onclick = () => {
+  state.items = state.items.filter(i => i.id !== currentItemId);
+  save(); render(); closeSheet();
+};
+
+$('eventName').oninput = e => { state.eventName = e.target.value; save(); };
+$('eventDate').oninput = e => { state.eventDate = e.target.value; save(); };
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.onclick = () => { state.mode = tab.dataset.mode; lastPct = null; save(); render(); window.scrollTo({top:0, behavior:'smooth'}); };
+});
+
+$('fab').onclick = () => { openSheet('addSheet'); };
+$('menuBtn').onclick = () => openSheet('menuSheet');
+$('hideToggle').onclick = () => { state.hideDone = !state.hideDone; save(); render(); };
+
+function submitInput(){
+  const input = $('itemInput');
+  if(!input.value.trim()) return;
+  const n = addItems(input.value);
+  input.value = '';
+  renderPreview();
+  toast(n > 1 ? `${n} objets ajoutés` : 'Ajouté');
+}
+$('addBtn').onclick = submitInput;
+$('itemInput').addEventListener('input', renderPreview);
+$('itemInput').addEventListener('keydown', e => { if(e.key === 'Enter') submitInput(); });
+
+$('resetEventBtn').onclick = () => {
+  if(confirm('Remettre toutes les cases à zéro pour un nouveau tournage ? Ta liste de matos est conservée.')){
+    state.items.forEach(i => { i.packed = false; i.retrieved = false; });
+    state.eventName = ''; state.eventDate = ''; state.mode = 'avant'; lastPct = null;
+    save(); render(); closeSheet();
+  }
+};
+$('clearAllBtn').onclick = () => {
+  if(confirm('Tout effacer, y compris ta liste de matos ?')){
+    state = {eventName:'', eventDate:'', mode:'avant', hideDone:false, items:[]};
+    lastPct = null;
+    save(); render(); closeSheet();
+  }
+};
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null, wantListening = false, finals = [], interim = '', baseText = '', heard = false, emptyRounds = 0;
+
+function micNote(msg){
+  $('micNote').textContent = msg || '';
+  $('micNote').hidden = !msg;
+}
+function setListening(on){
+  $('micBtn').classList.toggle('listening', on);
+  $('micTitle').textContent = on ? 'Je t\'écoute…' : 'Dicter ma liste';
+  $('micSub').textContent = on ? 'Touche ici quand tu as fini' : 'Énumère ton matos, je sépare les objets';
+}
+function updateDictation(){
+  const parts = [baseText].concat(finals.flatMap(segmentDictation));
+  if(interim) parts.push(interim);
+  $('itemInput').value = parts.filter(Boolean).join(', ');
+  renderPreview();
+}
+function stopDictation(){
+  if(!wantListening) return;
+  wantListening = false;
+  try{ recognition.stop(); }catch(e){}
+}
+
+if(SR){
+  recognition = new SR();
+  recognition.lang = 'fr-FR';
+  recognition.interimResults = true;
+  recognition.continuous = !/Android/i.test(navigator.userAgent);
+  recognition.onresult = e => {
+    heard = true;
+    interim = '';
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const t = e.results[i][0].transcript.trim();
+      if(e.results[i].isFinal){ if(t) finals.push(t); }
+      else interim += (interim ? ' ' : '') + t;
+    }
+    updateDictation();
+  };
+  recognition.onerror = e => {
+    if(e.error === 'no-speech' || e.error === 'aborted') return;
+    wantListening = false;
+    micNote(e.error === 'not-allowed' || e.error === 'service-not-allowed'
+      ? 'Micro bloqué. Autorise le micro pour ce site dans ton navigateur, ou utilise la touche micro de ton clavier.'
+      : e.error === 'network'
+        ? 'La dictée a besoin d\'internet. Sans réseau, utilise la touche micro de ton clavier.'
+        : 'La dictée a échoué. Réessaie, ou utilise la touche micro de ton clavier.');
+  };
+  recognition.onend = () => {
+    if(interim){ finals.push(interim); interim = ''; updateDictation(); }
+    if(wantListening){
+      emptyRounds = heard ? 0 : emptyRounds + 1;
+      heard = false;
+      if(emptyRounds < 2){
+        try{ recognition.start(); return; }catch(e){}
+      }
+    }
+    wantListening = false;
+    setListening(false);
+    if(parseItems($('itemInput').value).length) toast('Vérifie, puis touche Ajouter');
+  };
+  $('micBtn').onclick = () => {
+    if(wantListening){ stopDictation(); return; }
+    micNote('');
+    baseText = $('itemInput').value.trim().replace(/,\s*$/, '');
+    finals = []; interim = ''; heard = false; emptyRounds = 0;
+    wantListening = true;
+    setListening(true);
+    try{ recognition.start(); }catch(e){ wantListening = false; setListening(false); }
+  };
+} else {
+  $('micBtn').style.display = 'none';
+  micNote('Dictée intégrée indisponible sur ce navigateur : utilise la touche micro de ton clavier.');
+}
+
+render();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>
