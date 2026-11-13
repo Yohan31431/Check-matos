@@ -851,7 +851,32 @@ if(SR){
   micNote('Dictée intégrée indisponible sur ce navigateur : utilise la touche micro de ton clavier.');
 }
 
+function importFromHash(){
+  const m = location.hash.match(/^#import=(.+)$/);
+  if(!m) return 0;
+  let added = 0;
+  try{
+    const bytes = Uint8Array.from(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+    const list = JSON.parse(new TextDecoder().decode(bytes));
+    list.forEach(x => {
+      const label = cleanLabel(String(x.label || ''));
+      if(!label) return;
+      const mark = MARKS[x.mark] ? x.mark : null;
+      const dup = state.items.some(i => normalize(i.label) === normalize(label) && (i.mark || null) === mark);
+      if(dup) return;
+      const category = CATS[x.category] ? x.category : guessCategory(label);
+      state.items.push({id:uid(), label, mark, category, essential:!!x.essential, packed:!!x.packed, retrieved:false});
+      added++;
+    });
+    save();
+  }catch(e){}
+  history.replaceState(null, '', location.pathname + location.search);
+  return added;
+}
+const imported = importFromHash();
+
 render();
+if(imported) toast(`${imported} objet${imported > 1 ? 's' : ''} importé${imported > 1 ? 's' : ''}`);
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
