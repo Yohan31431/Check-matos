@@ -968,6 +968,18 @@ const imported = importFromHash();
 render();
 if(imported) toast(`${imported} objet${imported > 1 ? 's' : ''} importé${imported > 1 ? 's' : ''}`);
 
+let wakeLock = null;
+async function keepAwake(){
+  try{
+    if(!('wakeLock' in navigator) || document.visibilityState !== 'visible' || wakeLock) return;
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  }catch(e){ wakeLock = null; }
+}
+document.addEventListener('visibilitychange', keepAwake);
+document.addEventListener('click', keepAwake);
+keepAwake();
+
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
 }
