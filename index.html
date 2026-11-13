@@ -94,6 +94,12 @@
   .swatch.sel{border-color:var(--ink);}
   .title-input{width:100%; border:none; background:transparent; outline:none; padding:0; font-size:24px; font-weight:800; letter-spacing:-.5px; margin:0 0 4px;}
   .hint-sm{font-size:12px; font-weight:700; color:var(--muted); margin:8px 2px 0; line-height:1.4;}
+  .item.child{margin-left:30px; padding:7px 8px; border-radius:18px;}
+  .item.child .tile{width:34px; height:34px; border-radius:12px; font-size:16px; font-weight:800;}
+  .item.child .item-label{font-size:14px;}
+  .item.child .check{width:38px; height:38px; border-radius:13px;}
+  .sub-row{display:flex; align-items:center; justify-content:space-between; background:var(--card); border-radius:14px; padding:10px 14px; margin-top:6px; font-size:14px; font-weight:800;}
+  .sub-row button{font-size:16px; color:var(--muted); padding:0 4px;}
   .more{width:32px; height:44px; flex:none; display:flex; align-items:center; justify-content:center; color:#B9B19F;}
   .check{
     width:46px; height:46px; flex:none; border-radius:16px; background:var(--soft);
@@ -239,6 +245,14 @@
   <div class="grab"></div>
   <input type="text" class="title-input" id="itemName" autocomplete="off" enterkeyhint="done" aria-label="Nom de l'objet">
   <button class="row-toggle" id="essToggle">Indispensable<span class="switch" id="essSwitch"></span></button>
+  <div id="subZone">
+    <div class="label-sm">Sous-éléments</div>
+    <div id="subList"></div>
+    <div class="field" style="margin-top:8px;">
+      <input type="text" id="subInput" placeholder="Cache avant, cache arrière…" autocomplete="off" enterkeyhint="done">
+      <button class="btn dark" id="subAdd">Ajouter</button>
+    </div>
+  </div>
   <div class="label-sm">Repère couleur</div>
   <div class="swatches" id="swatches"></div>
   <div class="hint-sm">Pour distinguer deux objets identiques : colle un scotch ou une pastille de cette couleur dessus.</div>
@@ -333,7 +347,11 @@ const MARKS = {Rouge:'#FF6B6B', Bleu:'#5B8DEF', Vert:'#3FBF7F', Jaune:'#FFC93C',
 const MARK_NAMES = Object.keys(MARKS);
 const UNITS = new Set(['mm','cm','m','to','go','k','w','tera','giga','h','v','mah']);
 const PLURAL_SECOND = new Set(['durs','externes','cravates','frontales','rapides','memoires']);
-const fullName = item => item.mark ? `${item.label} (${item.mark.toLowerCase()})` : item.label;
+const fullName = item => {
+  const base = item.mark ? `${item.label} (${item.mark.toLowerCase()})` : item.label;
+  const parent = item.parent && state.items.find(i => i.id === item.parent);
+  return parent ? `${parent.label} · ${base}` : base;
+};
 
 function cleanLabel(s){
   s = s.trim();
@@ -619,17 +637,21 @@ function renderList(list, avant){
   CATEGORY_ORDER.forEach(cat => {
     const all = list.filter(i => i.category === cat);
     if(!all.length) return;
-    const visible = (state.hideDone ? all.filter(i => !isChecked(i)) : all)
-      .slice().sort((a, b) => (b.essential - a.essential) || (isChecked(a) - isChecked(b)));
-    if(!visible.length) return;
-    shown += visible.length;
+    const tops = all.filter(i => !i.parent || !all.some(p => p.id === i.parent));
+    let groups = tops.map(t => ({t, kids:all.filter(k => k.parent === t.id)}));
+    if(state.hideDone){
+      groups = groups.map(g => ({t:g.t, kids:g.kids.filter(k => !isChecked(k))})).filter(g => !isChecked(g.t) || g.kids.length);
+    }
+    groups.sort((a, b) => (b.t.essential - a.t.essential) || (isChecked(a.t) - isChecked(b.t)));
+    if(!groups.length) return;
+    shown += groups.reduce((n, g) => n + 1 + g.kids.length, 0);
     const h = el('div', 'cat-head');
     const dot = el('span', 'cat-dot'); dot.style.background = CATS[cat].color;
     h.appendChild(dot);
     h.appendChild(el('span', 'cat-name', cat));
     h.appendChild(el('span', 'cat-count', `${all.filter(isChecked).length}/${all.length}`));
     zone.appendChild(h);
-    visible.forEach(item => zone.appendChild(renderItem(item)));
+    groups.forEach(g => { zone.appendChild(renderItem(g.t)); g.kids.forEach(k => zone.appendChild(renderItem(k))); });
   });
   if(!shown){
     const e = el('div', 'empty');
@@ -644,10 +666,10 @@ const MORE_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentC
 
 function renderItem(item){
   const checked = isChecked(item);
-  const row = el('div', 'item' + (checked ? ' done' : ''));
+  const row = el('div', 'item' + (item.parent ? ' child' : '') + (checked ? ' done' : ''));
   row.onclick = () => toggleItem(item);
 
-  const tile = el('div', 'tile', CATS[item.category].emoji);
+  const tile = el('div', 'tile', item.parent ? '↳' : CATS[item.category].emoji);
   tile.style.background = CATS[item.category].color;
   row.appendChild(tile);
 
@@ -712,13 +734,24 @@ function renderItemSheet(){
     b.onclick = () => { item.mark = name; save(); render(); renderItemSheet(); };
     sw.appendChild(b);
   });
+  $('subZone').hidden = !!item.parent;
+  const sl = $('subList');
+  sl.innerHTML = '';
+  state.items.filter(k => k.parent === item.id).forEach(k => {
+    const r = el('div', 'sub-row');
+    r.appendChild(el('span', null, k.label));
+    const x = el('button', null, '✕'); x.setAttribute('aria-label', 'Supprimer');
+    x.onclick = () => { state.items = state.items.filter(i => i.id !== k.id); save(); render(); renderItemSheet(); };
+    r.appendChild(x);
+    sl.appendChild(r);
+  });
   $('essSwitch').classList.toggle('on', item.essential);
   const grid = $('catGrid');
   grid.innerHTML = '';
   CATEGORY_ORDER.forEach(cat => {
     const b = el('button', 'cat-opt' + (item.category === cat ? ' sel' : ''), `${CATS[cat].emoji}  ${cat}`);
     b.style.background = CATS[cat].color;
-    b.onclick = () => { item.category = cat; save(); render(); renderItemSheet(); };
+    b.onclick = () => { item.category = cat; state.items.forEach(i => { if(i.parent === item.id) i.category = cat; }); save(); render(); renderItemSheet(); };
     grid.appendChild(b);
   });
 }
@@ -734,8 +767,20 @@ $('essToggle').onclick = () => {
   item.essential = !item.essential;
   save(); render(); renderItemSheet();
 };
+function addSub(){
+  const item = state.items.find(i => i.id === currentItemId);
+  const input = $('subInput');
+  if(!item || item.parent || !input.value.trim()) return;
+  input.value.split(/,|;|\n/).map(cleanLabel).filter(Boolean).forEach(label => {
+    state.items.push({id:uid(), label, mark:null, parent:item.id, category:item.category, essential:false, packed:item.packed, retrieved:false});
+  });
+  input.value = '';
+  save(); render(); renderItemSheet();
+}
+$('subAdd').onclick = addSub;
+$('subInput').addEventListener('keydown', e => { if(e.key === 'Enter') addSub(); });
 $('deleteBtn').onclick = () => {
-  state.items = state.items.filter(i => i.id !== currentItemId);
+  state.items = state.items.filter(i => i.id !== currentItemId && i.parent !== currentItemId);
   save(); render(); closeSheet();
 };
 
@@ -862,11 +907,18 @@ function importFromHash(){
       const label = cleanLabel(String(x.label || ''));
       if(!label) return;
       const mark = MARKS[x.mark] ? x.mark : null;
-      const dup = state.items.some(i => normalize(i.label) === normalize(label) && (i.mark || null) === mark);
+      const dup = state.items.some(i => !i.parent && normalize(i.label) === normalize(label) && (i.mark || null) === mark);
       if(dup) return;
       const category = CATS[x.category] ? x.category : guessCategory(label);
-      state.items.push({id:uid(), label, mark, category, essential:!!x.essential, packed:!!x.packed, retrieved:false});
+      const pid = uid();
+      state.items.push({id:pid, label, mark, category, essential:!!x.essential, packed:!!x.packed, retrieved:false});
       added++;
+      (Array.isArray(x.subs) ? x.subs : []).forEach(sx => {
+        const subLabel = cleanLabel(String(typeof sx === 'string' ? sx : (sx && sx.label) || ''));
+        if(!subLabel) return;
+        state.items.push({id:uid(), label:subLabel, mark:null, parent:pid, category, essential:!!(sx && sx.essential), packed:!!x.packed, retrieved:false});
+        added++;
+      });
     });
     save();
   }catch(e){}
