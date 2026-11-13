@@ -69,9 +69,13 @@
   .chip{flex:none; border-radius:999px; padding:10px 14px; font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px; white-space:nowrap;}
   .chip b{display:inline-flex; width:18px; height:18px; border-radius:50%; background:var(--ink); color:#fff; align-items:center; justify-content:center; font-size:13px; line-height:1;}
 
-  .cat-head{display:flex; align-items:center; gap:8px; margin:20px 4px 10px;}
+  .cat-head{width:100%; text-align:left; display:flex; align-items:center; gap:8px; margin:20px 4px 10px;}
   .cat-dot{width:10px; height:10px; border-radius:50%;}
   .cat-name{font-size:13px; font-weight:800; letter-spacing:.2px;}
+  .chev{font-size:11px; color:var(--muted); transition:transform .2s; display:inline-block;}
+  .cat-head.collapsed .chev{transform:rotate(-90deg);}
+  .cat-count.full{color:#2FA866;}
+  .head-btn{font-size:12px; font-weight:800; color:var(--ink); background:var(--card); border-radius:999px; padding:7px 12px;}
   .cat-count{margin-left:auto; font-size:12px; font-weight:800; color:var(--muted);}
 
   .item{
@@ -265,6 +269,7 @@
   <div class="grab"></div>
   <h3>Options</h3>
   <button class="row-toggle" id="hideToggle">Cacher ce qui est coché<span class="switch" id="hideSwitch"></span></button>
+  <button class="btn light full" id="backupBtn">Sauvegarder ma liste (lien)</button>
   <button class="btn light full" id="resetEventBtn">Nouveau tournage (garde ma liste)</button>
   <button class="btn danger full" id="clearAllBtn">Tout effacer</button>
 </div>
@@ -275,6 +280,7 @@
 const STORAGE_KEY = 'checkmatos-v1';
 
 const CATS = {
+  'À faire': {emoji:'✅', color:'#FFD6C9'},
   'Caméras': {emoji:'🎥', color:'#FFE27A'},
   'Objectifs': {emoji:'📸', color:'#BFCBFF'},
   'Son': {emoji:'🎙️', color:'#FFB8DE'},
@@ -340,6 +346,7 @@ function load(){
   return {eventName:'', eventDate:'', mode:'avant', hideDone:false, items:[]};
 }
 let state = load();
+state.collapsed = state.collapsed || {};
 function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){} }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 
@@ -462,7 +469,7 @@ function addItems(rawText){
 }
 
 const isChecked = item => state.mode === 'avant' ? item.packed : item.retrieved;
-const baseList = () => state.mode === 'apres' ? state.items.filter(i => i.packed) : state.items;
+const baseList = () => state.mode === 'apres' ? state.items.filter(i => i.packed && i.category !== 'À faire') : state.items;
 
 function toggleItem(item){
   if(state.mode === 'avant'){
@@ -629,8 +636,12 @@ function renderList(list, avant){
     return;
   }
   const head = el('div', 'section-title');
-  head.appendChild(el('h2', null, avant ? 'Mon matos' : 'À récupérer'));
-  head.appendChild(el('span', null, `${list.length} objet${list.length > 1 ? 's' : ''}`));
+  head.appendChild(el('h2', null, `${avant ? 'Mon matos' : 'À récupérer'} · ${list.length}`));
+  const presentCats = CATEGORY_ORDER.filter(c => list.some(i => i.category === c));
+  const allCollapsed = presentCats.every(c => state.collapsed[c]);
+  const foldAll = el('button', 'head-btn', allCollapsed ? 'Tout déplier' : 'Tout replier');
+  foldAll.onclick = () => { presentCats.forEach(c => { state.collapsed[c] = !allCollapsed; }); save(); render(); };
+  head.appendChild(foldAll);
   zone.appendChild(head);
 
   let shown = 0;
@@ -645,12 +656,18 @@ function renderList(list, avant){
     groups.sort((a, b) => (b.t.essential - a.t.essential) || (isChecked(a.t) - isChecked(b.t)));
     if(!groups.length) return;
     shown += groups.reduce((n, g) => n + 1 + g.kids.length, 0);
-    const h = el('div', 'cat-head');
+    const collapsed = !!state.collapsed[cat];
+    const h = el('button', 'cat-head' + (collapsed ? ' collapsed' : ''));
+    h.setAttribute('aria-expanded', String(!collapsed));
+    h.onclick = () => { state.collapsed[cat] = !collapsed; save(); render(); };
+    h.appendChild(el('span', 'chev', '▼'));
     const dot = el('span', 'cat-dot'); dot.style.background = CATS[cat].color;
     h.appendChild(dot);
     h.appendChild(el('span', 'cat-name', cat));
-    h.appendChild(el('span', 'cat-count', `${all.filter(isChecked).length}/${all.length}`));
+    const doneN = all.filter(isChecked).length;
+    h.appendChild(el('span', 'cat-count' + (doneN === all.length ? ' full' : ''), `${doneN}/${all.length}`));
     zone.appendChild(h);
+    if(collapsed) return;
     groups.forEach(g => { zone.appendChild(renderItem(g.t)); g.kids.forEach(k => zone.appendChild(renderItem(k))); });
   });
   if(!shown){
@@ -792,6 +809,27 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 $('fab').onclick = () => { openSheet('addSheet'); };
 $('menuBtn').onclick = () => openSheet('menuSheet');
+function backupLink(){
+  const list = state.items.filter(i => !i.parent).map(i => ({
+    label:i.label, mark:i.mark || undefined, category:i.category, essential:i.essential, packed:i.packed,
+    subs:state.items.filter(k => k.parent === i.id).map(k => ({label:k.label, essential:k.essential}))
+  }));
+  const bytes = new TextEncoder().encode(JSON.stringify(list));
+  let bin = '';
+  for(let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+  return location.origin + location.pathname + '#import=' + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+$('backupBtn').onclick = async () => {
+  const url = backupLink();
+  try{
+    if(navigator.share){ await navigator.share({title:'Check Matos : ma liste', url}); return; }
+    await navigator.clipboard.writeText(url);
+    toast('Lien copié. Garde-le dans tes notes');
+  }catch(e){
+    if(e && e.name === 'AbortError') return;
+    $('itemInput').value = ''; prompt('Copie ce lien et garde-le dans tes notes :', url);
+  }
+};
 $('hideToggle').onclick = () => { state.hideDone = !state.hideDone; save(); render(); };
 
 function submitInput(){
@@ -815,7 +853,7 @@ $('resetEventBtn').onclick = () => {
 };
 $('clearAllBtn').onclick = () => {
   if(confirm('Tout effacer, y compris ta liste de matos ?')){
-    state = {eventName:'', eventDate:'', mode:'avant', hideDone:false, items:[]};
+    state = {eventName:'', eventDate:'', mode:'avant', hideDone:false, collapsed:{}, items:[]};
     lastPct = null;
     save(); render(); closeSheet();
   }
